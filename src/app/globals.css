@@ -114,86 +114,7 @@ me-root,
   background-size: 28px 28px !important;
 }
 
-@layer components {
-  /* ==========================================================================
-     Mind-Elixir Custom Elements Layout Fix
-     ========================================================================== */
-  #mindmap-canvas,
-  .mind-elixir-container {
-    position: relative !important;
-    width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  
-  /* Ensure SVG connector canvas sits properly */
-  #mindmap-canvas svg.topiclinks,
-  #mindmap-canvas svg.lines {
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    pointer-events: none !important;
-    overflow: visible !important;
-  }
-  
-  /* Root layout containers */
-  me-main {
-    position: absolute !important;
-    display: flex !important;
-    align-items: center !important;
-    height: max-content !important;
-    width: max-content !important;
-    pointer-events: all !important;
-  }
-  
-  /* Tree branches structure */
-  me-wrapper {
-    display: flex !important;
-    align-items: center !important;
-    position: relative !important;
-    padding: 0 10px !important;
-  }
-  me-parent {
-    display: flex !important;
-    align-items: center !important;
-    position: relative !important;
-  }
-  me-children {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    position: relative !important;
-    padding-left: 30px !important;
-  }
-  
-  /* Node boxes (Topic Cards) - MUST NOT BE FULL-WIDTH */
-  me-tpc {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: max-content !important;
-    min-width: 80px !important;
-    max-width: 320px !important;
-    padding: 8px 16px !important;
-    margin: 6px 0 !important;
-    border-radius: 8px !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-    box-sizing: border-box !important;
-    cursor: pointer !important;
-  }
-  
-  /* Root topic distinction */
-  me-root > me-tpc {
-    font-weight: bold !important;
-    font-size: 1.125rem !important;
-    padding: 12px 24px !important;
-  }
-}
+
 
 /* Root node styling */
 me-root > me-parent > me-wrapper > me-tpc {
@@ -426,4 +347,90 @@ me-expander {
   margin-bottom: 5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* ==========================================================================
+   MIND-ELIXIR CORE LAYOUT OVERRIDES (FORCE SHRINK-WRAP & TREE BRANCHING)
+   ========================================================================== */
+/* Main canvas root */
+#mindmap-canvas,
+.mind-elixir-container {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100vh - 64px) !important;
+  overflow: hidden !important;
+  background-color: #ffffff !important;
+}
+/* Base custom elements layout reset */
+me-main {
+  position: absolute !important;
+  display: flex !important;
+  align-items: center !important;
+  width: max-content !important;
+  height: max-content !important;
+  pointer-events: auto !important;
+}
+/* Wrapper representing a branch node and its children */
+me-wrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  width: max-content !important;
+  position: relative !important;
+  padding: 0 16px !important;
+  margin: 0 !important;
+}
+/* Parent container holding the current node */
+me-parent {
+  display: flex !important;
+  align-items: center !important;
+  width: max-content !important;
+  position: relative !important;
+}
+/* Container holding all child branches */
+me-children {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  width: max-content !important;
+  position: relative !important;
+  padding-left: 36px !important;
+}
+/* Topic Node (The visible pill/card) - STRICT OVERRIDE */
+me-tpc {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  max-width: 320px !important;
+  min-width: 60px !important;
+  padding: 8px 16px !important;
+  margin: 8px 0 !important;
+  border-radius: 8px !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+  cursor: pointer !important;
+}
+/* Root topic styling */
+me-root > me-tpc {
+  font-weight: 700 !important;
+  font-size: 1.125rem !important;
+  padding: 12px 24px !important;
+  background-color: #0066AB !important;
+  color: #ffffff !important;
+}
+/* SVG Connectors: Must be pinned across canvas bounds */
+#mindmap-canvas svg.topiclinks,
+#mindmap-canvas svg.lines,
+.mind-elixir svg.topiclinks,
+.mind-elixir svg.lines {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  overflow: visible !important;
 }

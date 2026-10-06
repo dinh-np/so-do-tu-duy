@@ -95,7 +95,7 @@ export function CoreMindmapCanvas({ initialData, onDataChange, onNodeSelect }: C
     
     setTimeout(() => {
       me.toCenter?.();
-    }, 150);
+    }, 200);
 
     meRef.current = me;
 
@@ -182,7 +182,7 @@ export function CoreMindmapCanvas({ initialData, onDataChange, onNodeSelect }: C
   return (
     <div className="relative w-full h-full overflow-hidden touch-none" style={{ touchAction: 'none' }}>
       {/* Container for MindElixir */}
-      <div ref={containerRef} id="mindmap-canvas" className="w-full h-full bg-canvas" />
+      <div ref={containerRef} id="mindmap-canvas" className="relative w-full h-[calc(100vh-64px)] overflow-hidden bg-white select-none" style={{ touchAction: 'none' }} />
 
       {/* Top Desktop/Tablet Toolbar for Undo/Redo & Backup */}
       <div className="absolute top-4 left-4 z-10 flex gap-2 glass px-3 py-2 rounded-lg shadow-sm">
