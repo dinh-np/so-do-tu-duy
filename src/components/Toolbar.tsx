@@ -4,12 +4,16 @@ import {
   Plus, FolderOpen, Save, Download, Upload,
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   LayoutDashboard, BarChart3, Wand2,
-  FileText, MoreHorizontal, Brain
+  Columns, Users, Activity,
+  Brain
 } from 'lucide-react';
+import { AuthStatus } from './AuthStatus';
+
+export type ViewMode = 'mindmap' | 'gantt' | 'kanban' | 'raci' | 'risk';
 
 interface ToolbarProps {
   title: string;
-  view: 'mindmap' | 'gantt';
+  view: ViewMode;
   canUndo: boolean;
   canRedo: boolean;
   isSaving: boolean;
@@ -21,7 +25,7 @@ interface ToolbarProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onFitView: () => void;
-  onToggleView: (view: 'mindmap' | 'gantt') => void;
+  onToggleView: (view: ViewMode) => void;
   onAIGenerate: () => void;
   onImportMgmx: () => void;
   onExportMenu: () => void;
@@ -36,9 +40,8 @@ export function Toolbar({
   onTitleChange
 }: ToolbarProps) {
   return (
-    <header style={{
+    <header className="glass" style={{
       height: '52px',
-      background: 'white',
       borderBottom: '1px solid var(--color-border)',
       display: 'flex',
       alignItems: 'center',
@@ -173,47 +176,42 @@ export function Toolbar({
         gap: '2px',
         border: '1px solid var(--color-border)',
       }}>
-        <button
-          onClick={() => onToggleView('mindmap')}
-          title="Sơ đồ tư duy"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '5px',
-            padding: '5px 10px',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all var(--transition-fast)',
-            fontFamily: 'var(--font-sans)',
-            background: view === 'mindmap' ? 'var(--color-primary)' : 'transparent',
-            color: view === 'mindmap' ? 'white' : 'var(--color-text-muted)',
-            boxShadow: view === 'mindmap' ? 'var(--shadow-sm)' : 'none',
-          }}
-        >
-          <LayoutDashboard size={13} /> Sơ đồ
-        </button>
-        <button
-          onClick={() => onToggleView('gantt')}
-          title="Biểu đồ Gantt"
-          style={{
-            display: 'flex', alignItems: 'center', gap: '5px',
-            padding: '5px 10px',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all var(--transition-fast)',
-            fontFamily: 'var(--font-sans)',
-            background: view === 'gantt' ? 'var(--color-primary)' : 'transparent',
-            color: view === 'gantt' ? 'white' : 'var(--color-text-muted)',
-            boxShadow: view === 'gantt' ? 'var(--shadow-sm)' : 'none',
-          }}
-        >
-          <BarChart3 size={13} /> Gantt
-        </button>
+        {[
+          { id: 'mindmap', icon: LayoutDashboard, label: 'Sơ đồ' },
+          { id: 'gantt', icon: BarChart3, label: 'Gantt' },
+          { id: 'kanban', icon: Columns, label: 'Kanban' },
+          { id: 'raci', icon: Users, label: 'RACI' },
+          { id: 'risk', icon: Activity, label: 'Risk' }
+        ].map(item => (
+          <button
+            key={item.id}
+            onClick={() => onToggleView(item.id as ViewMode)}
+            title={item.label}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '5px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all var(--transition-fast)',
+              fontFamily: 'var(--font-sans)',
+              background: view === item.id ? 'var(--color-primary)' : 'transparent',
+              color: view === item.id ? 'white' : 'var(--color-text-muted)',
+              boxShadow: view === item.id ? 'var(--shadow-sm)' : 'none',
+            }}
+          >
+            <item.icon size={13} /> <span className="hidden sm:inline">{item.label}</span>
+          </button>
+        ))}
       </div>
+
+      {/* === Separator === */}
+      <div style={{ width: 1, height: 24, background: 'var(--color-border)', marginInline: '4px' }} />
+
+      {/* === Sync & Auth Status === */}
+      <AuthStatus />
 
       {/* === Separator === */}
       <div style={{ width: 1, height: 24, background: 'var(--color-border)', marginInline: '4px' }} />

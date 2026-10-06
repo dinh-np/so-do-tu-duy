@@ -11,6 +11,8 @@ import {
   exportToPptx, exportToXlsx, exportToDocx,
   exportToMsProject, exportToPng, exportToPdf
 } from '@/lib/export-engine';
+import { db } from '@/lib/db';
+import { registerWebMCPTools } from '@/lib/webmcp';
 
 import { Toolbar } from '@/components/Toolbar';
 import { InspectorPanel } from '@/components/InspectorPanel';
@@ -23,6 +25,15 @@ const MindmapEditor = dynamic(
   () => import('@/components/MindmapEditor').then(m => m.MindmapEditor),
   { ssr: false, loading: () => <LoadingCanvas /> }
 );
+const GanttChart = dynamic(
+  () => import('@/components/GanttChart').then(m => m.GanttChart),
+  { ssr: false, loading: () => <LoadingCanvas /> }
+);
+
+import { KanbanBoard } from '@/components/KanbanBoard';
+import { RaciMatrix } from '@/components/RaciMatrix';
+import { RiskHeatmap } from '@/components/RiskHeatmap';
+import type { ViewMode } from '@/components/Toolbar';
 
 function LoadingCanvas() {
   return (
@@ -94,7 +105,7 @@ function ToastContainer({ toasts }: { toasts: Toast[] }) {
 export default function MindmapPage() {
   const [doc, setDoc] = useState<MindmapDocument>(() => createDefaultMindmap());
   const [selectedNode, setSelectedNode] = useState<MindNode | null>(null);
-  const [view, setView] = useState<'mindmap' | 'gantt'>('mindmap');
+  const [view, setView] = useState<ViewMode>('mindmap');
   const [showAI, setShowAI] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -110,7 +121,9 @@ export default function MindmapPage() {
   // Load saved mindmap on mount
   useEffect(() => {
     const saved = loadCurrentMindmap();
-    if (saved) setDoc(saved);
+    if (saved) {
+      setTimeout(() => setDoc(saved), 0);
+    }
   }, []);
 
   // Auto-save debounced
@@ -129,6 +142,76 @@ export default function MindmapPage() {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
   }, []);
+
+  // Cloud Sync
+  useEffect(() => {
+    import('@/lib/cloud-sync').then(({ CloudSync }) => {
+      CloudSync.startAutoSync();
+    });
+  }, []);
+
+  // WebMCP Integration
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (!document.modelContext) {
+        document.modelContext = {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          registerTool: (name: string, desc: string, handler: any) => {
+            console.log(`[WebMCP] Registered tool: ${name}`);
+            // Mock registration for when Gemini executes in-browser tools via standard browser APIs
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (window as any)[`__webmcp_${name}`] = handler;
+          }
+        };
+      }
+      registerWebMCPTools({
+        getRoot: () => doc.root,
+        title: doc.title,
+        onAddNode: (parentId, newNode) => {
+          function addToTree(node: MindNode): MindNode {
+            if (node.id === parentId) return { ...node, children: [...(node.children || []), newNode] };
+            return { ...node, children: node.children?.map(addToTree) };
+          }
+          setDoc(prev => {
+            const updated = { ...prev, root: addToTree(prev.root) };
+            triggerAutoSave(updated);
+            return updated;
+          });
+          showToast('AI đã thêm nhánh mới', 'info');
+        },
+        onUpdateNode: (id, updates) => {
+          function updateInTree(node: MindNode): MindNode {
+            if (node.id === id) return { ...node, ...updates };
+            return { ...node, children: node.children?.map(updateInTree) };
+          }
+          setDoc(prev => {
+            const updated = { ...prev, root: updateInTree(prev.root) };
+            triggerAutoSave(updated);
+            return updated;
+          });
+          setSelectedNode(prev => prev?.id === id ? { ...prev, ...updates } : prev);
+        },
+        onDeleteNode: (id) => {
+          function removeFromTree(node: MindNode): MindNode {
+            return { ...node, children: node.children?.filter(c => c.id !== id).map(removeFromTree) };
+          }
+          setDoc(prev => {
+            const updated = { ...prev, root: removeFromTree(prev.root) };
+            triggerAutoSave(updated);
+            return updated;
+          });
+          setSelectedNode(null);
+        },
+        onFocusNode: (id) => {
+          if (editorRef.current) {
+            // @ts-ignore
+            editorRef.current.selectNode?.(id);
+            editorRef.current.toCenter();
+          }
+        }
+      });
+    }
+  }, [doc, triggerAutoSave, showToast]);
 
   // ============ Handlers ============
 
@@ -232,18 +315,37 @@ export default function MindmapPage() {
   const handleAIGenerate = useCallback(async (prompt: string, mode: 'topic' | 'text') => {
     setAiLoading(true);
     try {
-      const res = await fetch('/api/ai/mindmap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, mode }),
-      });
-      const json = await res.json() as { data?: MindNode; error?: string };
-      if (!res.ok || json.error) throw new Error(json.error || 'Lỗi API');
+      const promptHash = btoa(encodeURIComponent(prompt + mode));
+      let rootData: MindNode;
+
+      const cached = await db.aiCache.get(promptHash);
+      if (cached) {
+        rootData = cached.rootData;
+        showToast('Đã tải từ bộ nhớ đệm (Cache)');
+      } else {
+        const res = await fetch('/api/ai/mindmap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, mode }),
+        });
+        const json = await res.json() as { data?: MindNode; error?: string };
+        if (!res.ok || json.error) throw new Error(json.error || 'Lỗi API');
+        
+        rootData = json.data!;
+        
+        await db.aiCache.put({
+          promptHash,
+          prompt,
+          rootData,
+          createdAt: Date.now()
+        });
+        showToast('AI đã tạo sơ đồ thành công!');
+      }
 
       const newDoc: MindmapDocument = {
         id: generateId(),
         title: prompt.slice(0, 50),
-        root: json.data!,
+        root: rootData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -251,7 +353,6 @@ export default function MindmapPage() {
       saveMindmapLocal(newDoc);
       setSelectedNode(null);
       setShowAI(false);
-      showToast('AI đã tạo sơ đồ thành công!');
     } catch (err) {
       showToast(`Lỗi AI: ${err instanceof Error ? err.message : 'Không xác định'}`, 'error');
     } finally {
@@ -322,7 +423,7 @@ export default function MindmapPage() {
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
         {/* Canvas area */}
         <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          {view === 'mindmap' ? (
+          {view === 'mindmap' && (
             <MindmapEditor
               key={doc.id} // Force remount khi đổi doc
               data={doc.root}
@@ -330,8 +431,18 @@ export default function MindmapPage() {
               onDataChange={handleDataChange}
               editorRef={editorRef}
             />
-          ) : (
-            <GanttPlaceholder />
+          )}
+          {view === 'gantt' && (
+            <GanttChart data={doc.root} onUpdate={handleNodeUpdate} />
+          )}
+          {view === 'kanban' && (
+            <KanbanBoard data={doc.root} onUpdate={handleNodeUpdate} />
+          )}
+          {view === 'raci' && (
+            <RaciMatrix data={doc.root} />
+          )}
+          {view === 'risk' && (
+            <RiskHeatmap data={doc.root} />
           )}
         </div>
 
@@ -391,36 +502,4 @@ export default function MindmapPage() {
   );
 }
 
-// Placeholder cho Gantt (Sprint 3)
-function GanttPlaceholder() {
-  return (
-    <div style={{
-      flex: 1, height: '100%',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      background: 'var(--color-surface)',
-      gap: '12px',
-    }}>
-      <div style={{
-        width: 64, height: 64,
-        background: 'linear-gradient(135deg, var(--color-primary), #00a8e8)',
-        borderRadius: 'var(--radius-xl)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: 'var(--shadow-primary)',
-      }}>
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-          <rect x="3" y="4" width="18" height="4" rx="1" />
-          <rect x="3" y="10" width="12" height="4" rx="1" />
-          <rect x="3" y="16" width="15" height="4" rx="1" />
-        </svg>
-      </div>
-      <h3 style={{ margin: 0, fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--color-text-primary)' }}>
-        Biểu đồ Gantt
-      </h3>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', maxWidth: 320 }}>
-        Chế độ Gantt Chart sẽ được triển khai trong <strong>Sprint 3</strong>.
-        <br />Hãy thiết lập ngày bắt đầu / hạn hoàn thành cho các nhánh trong bảng thuộc tính.
-      </p>
-    </div>
-  );
-}
+

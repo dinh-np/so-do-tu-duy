@@ -47,8 +47,27 @@ const MINDNODE_SCHEMA = {
   required: ['id', 'topic', 'children'],
 };
 
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
 export async function POST(request: NextRequest) {
   try {
+    // Simple IP-based Rate Limiting (5 req / min)
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const now = Date.now();
+    const rateLimit = rateLimitMap.get(ip);
+    
+    if (rateLimit) {
+      if (now > rateLimit.resetTime) {
+        rateLimitMap.set(ip, { count: 1, resetTime: now + 60000 });
+      } else if (rateLimit.count >= 5) {
+        return NextResponse.json({ error: 'Quá nhiều yêu cầu. Vui lòng thử lại sau 1 phút.' }, { status: 429 });
+      } else {
+        rateLimit.count += 1;
+      }
+    } else {
+      rateLimitMap.set(ip, { count: 1, resetTime: now + 60000 });
+    }
+
     const { prompt, mode } = await request.json() as { prompt: string; mode: 'topic' | 'text' };
 
     if (!prompt?.trim()) {

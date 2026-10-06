@@ -1,0 +1,164 @@
+Markdown
+# 📋 MASTER IMPLEMENTATION PROMPT FOR ANTIGRAVITY (CONSOLIDATED EDITION)
+**Role:** Senior Full-Stack Engineer, System Architect & PWA Specialist.  
+**Project:** "Sơ Đồ Tư Duy" (Enterprise-Grade, Local-First Visual Thinking & Project Management PWA — an AI-powered alternative to MindGenius, MS Project, Obsidian, Trello, and Notion).  
+**Repository Identifier:** `dinh-np/so-do-tu-duy` (https://github.com/dinh-np/so-do-tu-duy).  
+**Primary Execution Principle:** Local-First, Zero-Latency, Zero-Knowledge Encryption, Full Offline Capability with Cloud Firestore Sync, Google Gemini Pro AI Copilot, and WebMCP In-Browser Tool Calling.
+================================================================================
+1. CORE ARCHITECTURE & SYSTEM TECH STACK
+================================================================================
+- Framework: Next.js (App Router, React 19, TypeScript, Tailwind CSS, Lucide React).
+- Progressive Web App (PWA):
+  * Service Worker via `@ducanh2912/next-pwa` or `serwist`.
+  * Manifest configured for standalone mode, edge-to-edge rendering, and custom icons.
+  * 100% Offline operation: app must launch, render, edit, and export without network connectivity.
+- Storage Architecture (Dual-Tier Local-First):
+  * Tier 1 (Client Primary Source of Truth): IndexedDB via `dexie` (Dexie.js).
+    - 0ms input latency for all node operations.
+    - Zero-Knowledge Local Encryption: Web Crypto API (AES-GCM 256-bit) with User PIN/Master Password to encrypt records at rest in IndexedDB.
+    - Persistent Storage Request: Invoke `navigator.storage.persist()` on Chromium/Android/Desktop to prevent OS evictions.
+  * Tier 2 (Cloud Sync Layer for Multi-Device Continuity): Firebase (Firestore + Google Authentication).
+    - Sync triggers: On network restore (`online` event) and on mobile app blur (`visibilitychange` / `document.visibilityState === 'hidden'`).
+    - Conflict Resolution: Merge records using `updatedAt` Unix millisecond timestamps without overwriting newer remote branches.
+- AI & Agentic Engine:
+  * Google Gemini API (`gemini-2.0-flash` / `gemini-1.5-pro` via Next.js Server Actions `/api/ai/mindmap`).
+  * Rate-limiting guardrail (max 5 requests/min per client) with prompt-result caching in Dexie.js (`aiCache` table) to preserve quota.
+  * WebMCP & Function Calling: Dual-layer tool exposure allowing in-browser Gemini Pro to inspect, modify, traverse, and auto-pan canvas nodes in real time.
+- Design System (Krones Corporate Light Theme):
+  * Primary Palette: `#0066AB` (Corporate Blue), `#004B7D` (Hover/Focus), `#ffffff` (Canvas), `#f8f9fa` (Toolbars/Panels/Modals), `#e2e8f0` (Borders).
+  * Typography: `'Noto Sans', sans-serif` (UI & Body text with flawless Vietnamese diacritics), `'Georgia', serif` (Mindmap root titles & Presentation covers).
+================================================================================
+2. CANONICAL DATA SCHEMA (`MindNode` & `MindMapRecord`)
+================================================================================
+```typescript
+export interface MindNode {
+  id: string;
+  topic: string;
+  description?: string; // Rich-text / Markdown notes (Notion/TipTap compatible)
+  tags?: string[];
+  status?: 'backlog' | 'todo' | 'in_progress' | 'review' | 'done';
+  color?: string;
+  image?: string; // Client-compressed DataURL (< 300KB)
+  // 1. Task & Schedule Management (MS Project Standard)
+  task?: {
+    startDate?: string;     // YYYY-MM-DD
+    endDate?: string;       // YYYY-MM-DD
+    duration?: number;      // Days
+    progress?: number;      // 0 - 100%
+    assignee?: string;
+    priority?: 'low' | 'medium' | 'high';
+    dependencies?: string[]; // Predecessor node IDs for Critical Path Method (CPM)
+    isDailyFocus?: boolean;  // Display in "My Day Agenda"
+  };
+  // 2. Baseline & Variance Tracking
+  baseline?: {
+    startDate?: string;
+    endDate?: string;
+    plannedCost?: number;
+  };
+  // 3. Resource Workload & Capacity Balancing
+  workload?: {
+    estimatedHours?: number;
+    actualHours?: number;
+  };
+  // 4. Risk Management Heatmap (5x5 Matrix)
+  risk?: {
+    probability?: 1 | 2 | 3 | 4 | 5; // 1: Very Low -> 5: Severe
+    impact?: 1 | 2 | 3 | 4 | 5;      // 1: Negligible -> 5: Catastrophic
+    mitigationPlan?: string;
+  };
+  // 5. RACI Matrix Assignment
+  raci?: {
+    responsible?: string[]; // R: Direct Doers
+    accountable?: string;   // A: Approver / Owner
+    consulted?: string[];   // C: Subject Matter Experts
+    informed?: string[];    // I: Informed Stakeholders
+  };
+  // 6. Prezi-Style Presentation Mode
+  presentation?: {
+    slideOrder?: number;
+    speakerNotes?: string;
+  };
+  children?: MindNode[];
+}
+export interface MindMapRecord {
+  id: string;
+  title: string;
+  rootData: MindNode;
+  createdAt: number;
+  updatedAt: number;
+  syncStatus: 'synced' | 'pending';
+  userId?: string;
+}
+export interface AICacheRecord {
+  promptHash: string;
+  prompt: string;
+  rootData: MindNode;
+  createdAt: number;
+}
+================================================================================ 3. UNIFIED MULTI-VIEW ENGINE (SINGLE-SOURCE-OF-TRUTH ON INDEXEDDB)
+All views read and mutate the exact same MindNode tree stored locally:
+Mindmap View: Infinite interactive canvas, 2-sided auto-layout, node dragging, collapse/expand branches, zoom/pan.
+Gantt Chart View: Interactive timeline powered by frappe-gantt (or SVG Timeline) with dependency connectors, Critical Path highlighting, and Baseline vs. Actual variance overlays.
+RACI Matrix View: 2D Grid (WBS Tasks vs. Resources) displaying R, A, C, I badges with allocation checking.
+Resource Workload View: Daily workload heatmap per assignee, visually flagging over-allocations (> 8 hours/day).
+Risk Heatmap Matrix View: 5x5 Probability vs. Impact grid grouping nodes into Low (Green), Medium (Yellow), and High/Critical (Red).
+Kanban Board View: Drag-and-drop status board (Backlog, Todo, In Progress, Review, Done) updating status and progress fields.
+Daily Agenda View ("My Day"): Cross-project task dashboard filtering items due today/this week with quick-check completion.
+Obsidian Graph View: 2D Force-Directed Graph (react-force-graph or d3-force) parsing [[Wikilinks]] in node descriptions to render interconnected knowledge networks.
+Prezi-Style Presentation Mode: Dynamic canvas camera panning and zooming along Level 1 branches with AI-generated Speaker Notes.
+================================================================================ 4. GOOGLE GEMINI PRO AI CAPABILITIES & WEBMCP INTEGRATION
+A. Generative AI Pipelines:
+Text-to-Mindmap: Convert text prompts or curricula outlines into multi-level WBS trees using JSON Structured Outputs.
+Vision OCR to Mindmap: Upload sketches, whiteboard photos, or PDF scans; Gemini extracts the hierarchical structure.
+AI Project Copilot: Calculate Critical Path, evaluate 5x5 Risk scores, propose Risk Mitigation plans, and suggest RACI distributions.
+AI Branch Expansion: Suggest 3-5 logical sub-tasks/topics for any selected node.
+AI Pitch Generator: Auto-generate presentation speaker notes per branch.
+B. WebMCP In-Browser Tool Calling (lib/webmcp.ts):
+Register browser tools via document.modelContext.registerTool(...) with dual-layer fallback to Gemini Server Actions:
+add_node({ parentId, topic, priority, duration, assignee }): Add a child or sibling node programmatically.
+update_node({ nodeId, updates }): Update task progress, dates, color, or status in place.
+delete_node({ nodeId }): Safely remove a node and its descendants.
+focus_node({ nodeId }): Smoothly pan and zoom the canvas camera to center on the target node.
+get_project_summary(): Return current WBS structure, overdue milestones, and critical metrics.
+get_critical_path(): Calculate and return the bottleneck task sequence.
+export_project({ format }): Trigger direct export without manual menu clicks.
+================================================================================ 5. OFFICE INTEROPERABILITY & EXPORTERS
+MindGenius (.mgmx): 2-way ZIP/XML engine (jszip + fast-xml-parser) reading and exporting Document.xml with explicit UTF-8 character encoding.
+Microsoft Project (.xml): Export standard MSPDI XML format preserving <OutlineLevel>, <OutlineNumber>, predecessors, and baselines.
+Microsoft PowerPoint (.pptx): pptxgenjs exporting Slide 1 as Title Card (Georgia font, #0066AB), and each Level 1 branch as an individual slide with bullet-point sub-nodes.
+Microsoft Word (.docx): docx library generating structured hierarchical reports (Title, Heading 1, Heading 2, Bullets).
+Microsoft Excel (.xlsx): exceljs generating standard WBS schedules with task durations, RACI assignments, and progress bars.
+High-Resolution PDF & PNG: html-to-image + jspdf with canvas resolution clamping to prevent memory overflow.
+Obsidian Vault: Export entire database into a zip of Markdown .md files preserving [[Wikilinks]].
+================================================================================ 6. CROSS-PLATFORM HARDENING (LAPTOP, IPHONE, IPAD, ANDROID PHONE)
+Hardware Targets: Desktop/Laptop, iPad/Tablet, iPhone, and Android (Samsung Note 20 Ultra / S26 Ultra with S-Pen support).
+Touch Canvas Containment: CSS touch-action: none; overscroll-behavior: none; on canvas. Listen to touchstart/touchmove with { passive: false } to block default browser bounce and swipe-navigation.
+Mobile Floating Action Bar (FAB): Fixed bottom toolbar on touch devices with touch targets >= 44x44px (+ Child, + Sibling, Edit, Delete with confirmation modal).
+Virtual Keyboard Management: Track window.visualViewport to auto-pan edited nodes into the upper 50% safe zone when the on-screen keyboard appears.
+iOS Safe Area Insets: Set <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"> and apply padding-bottom: env(safe-area-inset-bottom, 16px).
+Background Sync on App Blur: Trigger Immediate Flush Sync via document.addEventListener('visibilitychange') before mobile OS freezes JavaScript execution.
+iOS Download Fallback: Wrap binary downloads in navigator.share (Web Share API) allowing users to save .mgmx or .pptx directly to Files, AirDrop, or messaging apps.
+30-Step Undo/Redo: Global in-memory history stack (Ctrl+Z / Ctrl+Y) preventing accidental deletions.
+================================================================================ 7. IMPLEMENTATION SPRINT ROADMAP
+Sprint 1 (Core Engine & Local-First Canvas):
+Initialize Next.js App Router, Tailwind configuration (Krones theme), Lucide icons.
+Setup PWA Manifest and Service Worker (next-pwa / serwist).
+Implement lib/db.ts (Dexie.js with Web Crypto AES-GCM encryption helpers).
+Build Core Infinite Mindmap Canvas with Desktop shortcuts (Tab, Enter, Delete) and Mobile FAB.
+Implement 30-step Undo/Redo stack and JSON full backup/restore.
+Sprint 2 (MindGenius 2-Way Parser & Multi-View Suite):
+Implement skills/mindgenius_parser_skill.ts (.mgmx ZIP/XML import & export).
+Integrate Gantt Chart View (frappe-gantt), Kanban View, RACI Grid, and Risk Heatmap Matrix.
+Sprint 3 (Gemini Pro AI, WebMCP Tools & Office Exporters):
+Setup Server Action /api/ai/mindmap with Rate Limiting (5 req/min) and Dexie caching.
+Implement lib/webmcp.ts registering canvas manipulation tools for Gemini Copilot.
+Complete full Office exporter engine (.pptx, .docx, .xlsx, .xml MSPDI, .pdf, .png).
+Sprint 4 (Firebase Cloud Sync & Multi-Device Hardening):
+Integrate lib/firebase.ts (Google Auth + Firestore sync).
+Implement background sync engine with timestamp conflict resolution.
+Apply visualViewport keyboard handling, iOS Safe Area insets, and Web Share API fallback.
+================================================================================
+ACTION REQUIRED:
+Please review and acknowledge this consolidated master architecture, confirm alignment with the dinh-np/so-do-tu-duy codebase, and provide the complete production-grade source code for Sprint 1 (lib/db.ts, tailwind.config.js, app/layout.tsx, and the Core Mindmap Canvas component with Mobile FAB).
+---

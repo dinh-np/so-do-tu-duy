@@ -5,7 +5,7 @@ import { MindNode } from '@/types/mindmap';
 import { formatDate, BRANCH_COLORS } from '@/lib/mindmap-utils';
 import {
   X, Palette, StickyNote, Calendar, User,
-  Flag, Image as ImageIcon, ChevronDown, Trash2
+  Flag, Image as ImageIcon, Trash2
 } from 'lucide-react';
 
 interface InspectorPanelProps {
@@ -42,11 +42,10 @@ export function InspectorPanel({ node, onClose, onUpdate, onDelete }: InspectorP
 
   return (
     <aside
-      className="animate-slide-right"
+      className="animate-slide-right glass"
       style={{
-        width: 260,
+        width: 280,
         flexShrink: 0,
-        background: 'var(--color-surface)',
         borderLeft: '1px solid var(--color-border)',
         display: 'flex',
         flexDirection: 'column',

@@ -28,6 +28,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -44,7 +45,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Sơ Đồ Tư Duy" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased pb-[env(safe-area-inset-bottom,16px)]">{children}</body>
     </html>
   );
 }

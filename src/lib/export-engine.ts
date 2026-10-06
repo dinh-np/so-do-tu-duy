@@ -85,7 +85,7 @@ export async function exportToPptx(root: MindNode, title: string): Promise<void>
     });
 
     // Image if exists
-    let contentX = 0.5;
+    const contentX = 0.5;
     let contentW = 9;
     if (branch.image && branch.image.startsWith('data:image')) {
       try {

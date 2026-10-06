@@ -144,7 +144,7 @@ export function MindmapEditor({ data, onNodeSelect, onDataChange, editorRef }: M
       direction: MindElixir.SIDE,
     };
     meRef.current.refresh(newData);
-  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data]);
 
   return (
     <div
