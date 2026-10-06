@@ -1,58 +1,34 @@
-# SKILL: MULTI-FORMAT OFFICE EXPORT ENGINE
+# SKILL: MULTI-FORMAT OFFICE & MEDIA EXPORT ENGINE
 
-Đặc tả kỹ thuật cho AntiGravity để triển khai xuất dữ liệu Mindmap ra bộ công cụ văn phòng Microsoft Office.
+## 1. Microsoft PowerPoint (.pptx) — `pptxgenjs`
+- Slide 1 (Title Card): Root topic title (Georgia font, white text, background `#0066AB`).
+- Slides 2+ (Branch Decks): Each Level 1 branch generates an individual slide:
+  - Slide Header: Level 1 topic name (Noto Sans, Bold, `#0066AB`).
+  - Slide Body: Hierarchical bullet points mapping Level 2 and Level 3 sub-nodes.
+  - Speaker Notes: Populated automatically from `node.presentation.speakerNotes`.
+  - Fallback Fonts: Noto Sans, Calibri, Arial.
 
----
+## 2. Microsoft Word (.docx) — `docx`
+- Root Node -> Document Title (Georgia, Bold, 26pt, `#0066AB`).
+- Level 1 Branches -> Heading 1 (Noto Sans, Bold, 18pt, `#004B7D`).
+- Level 2 Branches -> Heading 2 (Noto Sans, Semi-Bold, 14pt).
+- Deeper Branches -> Ordered / Unordered Bullet Lists with embedded descriptions.
 
-## 1. Xuất Microsoft PowerPoint (.pptx)
-* **Thư viện:** `pptxgenjs`
-* **Quy tắc dàn trang:**
-  - `Slide 1 (Bìa)`: Nền trắng `#ffffff`, Tiêu đề font `Georgia` màu `#0066AB` lấy từ `root.topic`.
-  - `Mỗi nhánh con cấp 1 (Main Branch)`: Tạo một Slide riêng:
-    + Tiêu đề Slide: Font `Georgia`, màu `#0066AB`.
-    + Nội dung: Dùng mảng text với định dạng bullet points lồng nhau theo cấp bậc con cấp 2, cấp 3 (`bullet: { indent: level * 20 }`).
-    + Nếu nhánh có ảnh: Dùng `slide.addImage({ data: node.image, x: ..., y: ... })`.
+## 3. Microsoft Excel (.xlsx - WBS & RACI Matrix) — `exceljs`
+- Sheet 1 (Work Breakdown Structure):
+  - Columns: WBS Code (`1`, `1.1`, `1.1.1`), Task Name, Assignee, Start Date, End Date, Duration (days), Progress (%), Status.
+  - Formatting: Header filled with `#0066AB` (white text), progress rendered with cell data bars.
+- Sheet 2 (RACI Matrix):
+  - 2D grid: WBS Tasks (Rows) vs. Stakeholders (Columns) filled with R, A, C, I badges.
+- Sheet 3 (Risk Heatmap):
+  - List of risks with Probability, Impact, Risk Score ($P \times I$), and Mitigation Plans.
 
----
+## 4. Microsoft Project (.xml - MSPDI Format) — `fast-xml-parser`
+- Generates standard Microsoft Project Data Interchange (MSPDI) XML.
+- Each node creates a `<Task>` element.
+- Auto-computes and maps: `<UID>`, `<ID>`, `<Name>`, `<Start>`, `<Finish>`, `<Duration>`, `<PercentComplete>`, `<OutlineLevel>`, and `<OutlineNumber>` (e.g. 1.1.2).
+- Preserves task predecessor links `<PredecessorLink>` for automated Critical Path calculation in MS Project Desktop.
 
-## 2. Xuất Microsoft Excel (.xlsx - WBS Schedule)
-* **Thư viện:** `exceljs` hoặc `xlsx`
-* **Cấu trúc bảng tính:**
-  | WBS | Cấp 1 | Cấp 2 | Cấp 3 | Ngày Bắt Đầu | Hạn Chót | Thời Lượng (Ngày) | Tiến Độ (%) | Người Thực Hiện |
-  |:---:|---|---|---|:---:|:---:|:---:|:---:|:---:|
-  | 1 | Tổng quan | | | 2026-10-01 | 2026-10-05 | 4 | 100% | Giáo viên |
-  | 1.1 | | Bài 1 | | 2026-10-01 | 2026-10-03 | 2 | 80% | Học sinh A |
-* Dùng đệ quy duyệt cây để gán mã WBS phân cấp (1, 1.1, 1.1.1...).
-
----
-
-## 3. Xuất Microsoft Project (.xml - MSPDI)
-* **Chuẩn:** MSPDI (Microsoft Project Data Interchange XML Schema).
-* **Cấu trúc thẻ XML cốt lõi:**
-```xml
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Project xmlns="http://schemas.microsoft.com/project">
-  <Name>Tên Dự Án</Name>
-  <Tasks>
-    <Task>
-      <UID>1</UID>
-      <ID>1</ID>
-      <Name>Tên Task</Name>
-      <OutlineLevel>1</OutlineLevel>
-      <OutlineNumber>1</OutlineNumber>
-      <Start>2026-10-01T08:00:00</Start>
-      <Finish>2026-10-05T17:00:00</Finish>
-      <PercentComplete>50</PercentComplete>
-    </Task>
-  </Tasks>
-</Project>
-```
-
----
-
-## 4. Xuất Microsoft Word (.docx)
-* **Thư viện:** `docx`
-* **Ánh xạ Style:**
-  - `Root Node`: Heading 1 (Title phong cách Georgia, màu `#0066AB`).
-  - `Level 1 Children`: Heading 2.
-  - `Level 2+ Children`: Paragraphs có bullet points phân cấp thụt lề chuẩn.
+## 5. High-Resolution PDF & PNG — `html-to-image` + `jspdf`
+- **Resolution Safety Clamping:** Limit export canvas dimensions to max 4096px width/height to avoid mobile RAM panics (Out-Of-Memory errors).
+- **PDF Formatting:** Standard A4 Landscape orientation, auto-scaled and centered.

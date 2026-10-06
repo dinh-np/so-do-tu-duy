@@ -1,63 +1,32 @@
-# SKILL: MINDGENIUS (.MGMX) PARSER & CONVERTER
-
-Tài liệu hướng dẫn AntiGravity cách xử lý định dạng file `.mgmx` của phần mềm MindGenius.
-
 ---
 
-## 1. Bản Chất Của File `.mgmx`
-* File `.mgmx` thực chất là một file nén chuẩn ZIP.
-* File trung tâm chứa dữ liệu sơ đồ là `Document.xml`.
-* Bên trong `Document.xml`, các nhánh được tổ chức dưới thẻ phân cấp lồng nhau: `<Branches>` $\rightarrow$ `<Branch>`.
+### 5. `.context/skill_mindgenius_parser.md`
 
----
+```markdown
+# SKILL: MINDGENIUS (.MGMX) TWO-WAY PARSER & BUILDER
 
-## 2. Quy Trình Import File .mgmx Vào Ứng Dụng
-Sử dụng thư viện `jszip` và `fast-xml-parser`:
+## 1. Import Pipeline (.mgmx -> MindNode)
+A `.mgmx` file is a ZIP archive containing a core `Document.xml` data payload.
+- **Libraries:** `jszip` + `fast-xml-parser`.
+- **Parsing Flow:**
+  1. `const zip = await JSZip.loadAsync(fileBlob);`
+  2. `const xmlContent = await zip.file("Document.xml").async("text");`
+  3. Instantiate `XMLParser` with options: `{ ignoreAttributes: false, attributeNamePrefix: "@_" }`.
+  4. Recursively traverse the XML tree `<Branches> -> <Branch>`:
+     - Map branch titles to `node.topic`.
+     - Map notes/descriptions to `node.description`.
+     - Map start dates and due dates to `node.task.startDate` and `node.task.endDate`.
+     - Map node styles/colors to `node.color`.
+  5. Commit generated `MindNode` tree into Dexie.js and trigger canvas auto-centering.
 
-```typescript
-import JSZip from 'jszip';
-import { XMLParser } from 'fast-xml-parser';
-import { MindNode } from '@/types/mindmap';
-
-export async function parseMgmxFile(file: File): Promise<MindNode> {
-  const zip = new JSZip();
-  const unzipped = await zip.loadAsync(file);
-  
-  const docXmlFile = unzipped.file('Document.xml');
-  if (!docXmlFile) {
-    throw new Error('File không hợp lệ: Không tìm thấy Document.xml bên trong tệp .mgmx');
-  }
-
-  const xmlContent = await docXmlFile.async('text');
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
-  const jsonObj = parser.parse(xmlContent);
-
-  // Ánh xạ cây XML sang chuẩn MindNode
-  return mapBranchToMindNode(jsonObj.MindGeniusDocument.RootBranch);
-}
-
-function mapBranchToMindNode(branch: any): MindNode {
-  return {
-    id: branch['@_Id'] || crypto.randomUUID(),
-    topic: branch['@_Title'] || 'Không có tiêu đề',
-    color: branch['@_Color'] || undefined,
-    children: branch.Branches?.Branch 
-      ? (Array.isArray(branch.Branches.Branch) 
-          ? branch.Branches.Branch.map(mapBranchToMindNode)
-          : [mapBranchToMindNode(branch.Branches.Branch)])
-      : [],
-    task: branch['@_StartDate'] ? {
-      startDate: branch['@_StartDate'],
-      endDate: branch['@_DueDate'],
-      progress: Number(branch['@_PercentComplete'] || 0),
-    } : undefined
-  };
-}
-```
-
----
-
-## 3. Quy Trình Export Ra File .mgmx
-1. Sử dụng `XMLBuilder` của `fast-xml-parser` để dựng ngược cấu trúc XML từ `MindNode`.
-2. Tạo file ZIP mới bằng `JSZip`, thêm `Document.xml` vào file nén.
-3. Kích hoạt tải về dưới tên `<Tên_Sơ_Đồ>.mgmx`.
+## 2. Export Pipeline (MindNode -> .mgmx)
+- **Generation Flow:**
+  1. Read active `MindNode` tree from Dexie.js.
+  2. Construct a compliant XML tree adhering to the MindGenius `Document.xml` schema.
+  3. **Strict Encoding:** Ensure XML begins with `<?xml version="1.0" encoding="utf-8"?>` to guarantee 100% Vietnamese diacritic preservation.
+  4. Instantiate `JSZip`, attach the generated `Document.xml` at root.
+  5. Compress as ZIP, output Blob with MIME `application/zip`, and name as `<Title>.mgmx`.
+  6. **Download / Web Share:**
+     - On Desktop/Android: Trigger `<a download="filename.mgmx">`.
+     - On iOS Safari: Use `navigator.share({ files: [file] })` fallback.
+     

@@ -1,39 +1,43 @@
-# SKILL: GOOGLE GEMINI AI MINDMAP GENERATION
-
-Đặc tả tích hợp Google Gemini API để tạo sơ đồ tư duy và mở rộng nhánh thông minh.
-
 ---
 
-## 1. Nguyên Tắc Gọi API
-* Tương tác qua **Next.js Server Actions** hoặc Route Handler `/api/ai/mindmap` để giữ bảo mật `GEMINI_API_KEY`.
-* Bắt buộc sử dụng cấu hình **Structured JSON Output** để loại bỏ hoàn toàn rủi ro sai lệch định dạng.
+### 4. `.context/skill_gemini_ai_mindmap.md`
 
----
+```markdown
+# SKILL: GOOGLE GEMINI PRO AI & WEBMCP INTEGRATION
 
-## 2. System Instruction & Prompt Template
-* **Model khuyến nghị:** `gemini-1.5-flash` hoặc `gemini-2.0-flash`.
-* **Cấu hình Schema (JSON Schema):**
-```json
-{
-  "type": "OBJECT",
-  "properties": {
-    "id": { "type": "STRING" },
-    "topic": { "type": "STRING" },
-    "children": {
-      "type": "ARRAY",
-      "items": { "$ref": "#" }
-    }
-  },
-  "required": ["id", "topic", "children"]
+## 1. Server Action Architecture (`/api/ai/mindmap`)
+- **Models:** `gemini-2.0-flash` (speed/real-time) or `gemini-1.5-pro` (complex WBS decomposition).
+- **Format:** Enforce `response_mime_type: "application/json"` with JSON Structured Schema.
+- **Client Cache Check:**
+  1. Hash prompt text (SHA-256).
+  2. Check Dexie `aiCache` table. If cached, return immediately without API call.
+  3. If missing, invoke Server Action, validate schema, cache result, and render.
+
+## 2. In-App AI Capabilities
+1. **Text-to-Mindmap:** Generate complete multi-level WBS trees from prompts, meeting transcripts, or course curricula.
+2. **Scan/Vision-to-Mindmap:** Upload whiteboard sketches, hand-drawn mindmaps, or PDF outlines; Gemini Vision extracts the hierarchical tree.
+3. **AI Project Copilot:**
+   - Detect schedule bottlenecks and calculate the Critical Path.
+   - Recommend RACI assignments based on task type.
+   - Evaluate Risk scores (Probability 1-5, Impact 1-5) and draft risk mitigation plans.
+4. **AI Branch Expansion:** Generate 3-5 logical sub-tasks or sub-topics for any selected node.
+5. **AI Pitch Generator:** Auto-write presentation speaker notes for each Level 1 branch.
+
+## 3. WebMCP In-Browser Tool Calling (`lib/webmcp.ts`)
+Expose browser tools via `document.modelContext.registerTool(...)` with fallback to Gemini Function Calling:
+
+```typescript
+export interface WebMCPToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: object;
+  execute: (args: any) => Promise<any>;
 }
-```
 
-* **System Prompt:**
-> "Bạn là chuyên gia tư duy trực quan và sư phạm. Nhiệm vụ của bạn là phân tích chủ đề hoặc tài liệu người dùng cung cấp thành một sơ đồ tư duy (Mindmap) phân cấp logic, cô đọng, dễ hiểu. Cấu trúc gồm chủ đề trung tâm (Root), phân rã thành các nhánh ý chính cấp 1, và các nhánh chi tiết cấp 2-3."
-
----
-
-## 3. Các Tính Năng AI Bắt Buộc
-1. **Tạo sơ đồ từ chủ đề:** Nhập "Ôn tập Tin học 7 HK1" $\rightarrow$ AI sinh toàn bộ cây mindmap.
-2. **Mở rộng nhánh (Expand Subtopics):** Nhận vào `topic` hiện tại của node $\rightarrow$ AI sinh 3-5 node con bổ sung.
-3. **Tóm tắt văn bản:** Nhận một đoạn tài liệu dài $\rightarrow$ AI trích xuất sơ đồ tư duy tóm lược.
+// Canonical Tool Declarations:
+// 1. add_node({ parentId, topic, priority, duration, assignee })
+// 2. update_node({ nodeId, updates: Partial<MindNode> })
+// 3. delete_node({ nodeId })
+// 4. focus_node({ nodeId }) -> Smooth camera pan/zoom to center node
+// 5. get_project_summary() -> Returns WBS stats, overdue count, CPM bottleneck
+// 6. export_project({ format: 'mgmx'|'pptx'|'docx'|'xlsx'|'xml'|'pdf' })

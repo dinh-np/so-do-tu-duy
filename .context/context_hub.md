@@ -1,57 +1,56 @@
-# CONTEXT HUB: SƠ ĐỒ TƯ DUY (MINDMAP PWA)
+# CONTEXT HUB: SƠ ĐỒ TƯ DUY (MINDMAP & PM PWA)
 
-Tệp này đóng vai trò trung tâm điều phối trạng thái, theo dõi tiến độ các Sprint và lưu lại các quyết định kiến trúc quan trọng cho AntiGravity.
+## 1. Storage & Sync Architecture Diagram
+┌────────────────────────────────────────────────────────────────────────┐
+│ [User Touch / Keyboard / Mouse / S-Pen / WebMCP Agent Actions]          │
+└───────────────────────────────────┬────────────────────────────────────┘
+│
+▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ TIER 1: CLIENT LOCAL-FIRST LAYER (Dexie.js / IndexedDB)               │
+│ • Latency: 0ms (instant commit)                                        │
+│ • Offline status: 100% fully functional without internet                │
+│ • Local Encryption: Web Crypto AES-GCM (Master PIN protected)           │
+│ • Storage Persistence: navigator.storage.persist()                     │
+└───────────────────────────────────┬────────────────────────────────────┘
+│ (Background Async Flush on)
+│ - Device 'online' event
+│ - Mobile 'visibilitychange' (hidden)
+▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ TIER 2: CLOUD SYNC LAYER (Firebase Firestore & Google Auth)            │
+│ • Multi-Device sync: Laptop <-> iPad <-> iPhone <-> Samsung S26 Ultra   │
+│ • Conflict Resolution: Merge by Unix ms 'updatedAt' timestamp           │
+│ • Cloud Collection: /users/{uid}/mindmaps/{mapId}                      │
+└────────────────────────────────────────────────────────────────────────┘
+## 2. Multi-View Architecture (Single Source of Truth on IndexedDB)
+All views read and mutate the exact same `MindNode` tree stored in IndexedDB:
+1. **Mindmap View:** Infinite canvas, 2-sided auto-layout, node dragging, collapse/expand branches.
+2. **Gantt Chart View:** CPM critical path highlighting, task dependencies, baseline vs. actual variance.
+3. **RACI Matrix View:** 2D Responsibility Grid (WBS items vs. Assignees) with R, A, C, I badges.
+4. **Resource Workload View:** Daily allocated hours heatmap per member with >8h over-allocation flags.
+5. **Risk Heatmap View:** 5x5 Probability vs. Impact matrix (Green/Yellow/Red risk zones).
+6. **Kanban Board View:** Drag-and-drop columns (`backlog`, `todo`, `in_progress`, `review`, `done`).
+7. **Daily Agenda View ("My Day"):** Filter tasks due today/this week with quick-check completion.
+8. **Obsidian Graph View:** 2D force-directed graph resolving `[[Wikilinks]]` in node descriptions.
+9. **Prezi-Style Presentation:** Smooth camera pan/zoom along Level 1 branches with AI speaker notes.
 
----
-
-## 1. Trạng Thái Hiện Tại Của Dự Án
-* **Giai đoạn:** Sprint 1 Hoàn thành → Sẵn sàng Sprint 2.
-* **Người dùng ủy quyền:** `dinh-np`
-* **Môi trường:** Local Development (`http://localhost:3000`) & Triển khai Vercel PWA.
-* **Cập nhật lần cuối:** 28/09/2026
-
----
-
-## 2. Lộ Trình Triển Khai (Sprint Roadmap)
-
-| Sprint | Hạng mục công việc chính | Trạng thái | Ghi chú kỹ thuật |
-|:---:|---|:---:|---|
-| **Sprint 1** | Khởi tạo Next.js, cấu hình PWA, Theme Krones, Canvas Editor cơ bản | ✅ Hoàn thành | Build OK. `mind-elixir` v4 API, phím tắt đầy đủ |
-| **Sprint 2** | Supabase Auth, Database Schema, Import/Export MindGenius (.mgmx) | 🟡 Một phần | `mgmx-parser.ts` xong. Cần thêm Supabase Auth + CRUD |
-| **Sprint 3** | Tích hợp Google Gemini AI, Chế độ Gantt Chart View | 🟡 Một phần | `/api/ai/mindmap` xong. Gantt = placeholder |
-| **Sprint 4** | Hệ thống Xuất Office & Tinh chỉnh PWA | 🟡 Một phần | `export-engine.ts` xong (PPTX/DOCX/XLSX/XML/PNG/PDF) |
-
-### ✅ Sprint 1 - Hoàn thành (28/09/2026)
-Các file đã tạo tại `e:\SourceCode\smart_mindmap\so-do-tu-duy\`:
-- `src/app/layout.tsx` - Noto Sans font, PWA meta, SEO
-- `src/app/globals.css` - Krones Design System đầy đủ CSS Variables
-- `src/app/page.tsx` - Main page, auto-save, keyboard shortcuts
-- `src/app/api/ai/mindmap/route.ts` - Gemini API với JSON Schema
-- `src/components/MindmapEditor.tsx` - mind-elixir wrapper
-- `src/components/Toolbar.tsx` - Thanh công cụ đầy đủ
-- `src/components/InspectorPanel.tsx` - Bảng thuộc tính (Style + Task)
-- `src/components/AIDialog.tsx` - Dialog tạo sơ đồ bằng AI
-- `src/components/ExportDialog.tsx` - Dialog xuất đa định dạng
-- `src/lib/mindmap-utils.ts` - CRUD utilities, localStorage
-- `src/lib/mgmx-parser.ts` - Import/Export .mgmx
-- `src/lib/export-engine.ts` - PPTX, DOCX, XLSX, XML, PNG, PDF
-- `src/types/mindmap.ts` - MindNode interface
-- `public/manifest.json` - PWA manifest
-
-### 📌 Sprint 2 - Việc cần làm tiếp theo
-1. Tích hợp Supabase Client (`@supabase/supabase-js`)
-2. Trang đăng nhập/đăng ký (Email + Google OAuth)
-3. Middleware bảo vệ route
-4. Lưu/đọc mindmap từ Supabase (`mindmaps` table)
-5. Danh sách sơ đồ cá nhân (Sidebar)
-6. Test thực tế import/export .mgmx với file MindGenius thật
-
----
-
-## 3. Các Quyết Định Kiến Trúc Trọng Tâm (ADR - Architectural Decisions)
-* **ADR-01 (Next.js thay vì Vite):** Dự án sử dụng Next.js App Router nhằm đồng bộ với năng lực của nhóm và tận dụng Server Actions cho API Keys (Gemini & Supabase Service Role) bảo mật.
-* **ADR-02 (Local-First kết hợp Cloud Sync):** Mindmap ưu tiên lưu trạng thái vào IndexedDB/LocalStorage khi offline; tự động đồng bộ lên Supabase khi có kết nối mạng và người dùng đã đăng nhập.
-* **ADR-03 (Format MindGenius):** File `.mgmx` bản chất là zip file chứa `Document.xml`. Việc giải nén và đóng gói diễn ra hoàn toàn ở Client bằng `JSZip` để giảm tải tối đa cho server.
-* **ADR-04 (Design System Đồng Bộ):** Toàn bộ giao diện áp dụng chuẩn Krones Corporate Light: màu nhấn `#0066AB`, bề mặt `#f8f9fa`, nền `#ffffff`, font `Noto Sans` và `Georgia`.
-* **ADR-05 (mind-elixir v4 API):** Sử dụng `me.bus.addListener('selectNodes', ...)` thay vì `'selectNode'`; không có option `draggable` (luôn bật); `MindElixirInstance = InstanceType<typeof MindElixir>`.
-* **ADR-06 (Gemini response.text):** Trong `@google/genai` v2+, `response.text` là property getter, không phải method. Không gọi `response.text()`.
+## 3. Implementation Sprint Roadmap
+- **Sprint 1: Core Engine, Local-First Canvas & Security**
+  - Initialize Next.js App Router, Tailwind Krones theme (`#0066AB`), Lucide icons.
+  - Setup PWA Manifest and Service Worker (`next-pwa` / `serwist`).
+  - Implement `lib/db.ts` (Dexie.js with AES-GCM Web Crypto encryption).
+  - Build Infinite Canvas with Desktop shortcuts (`Tab`, `Enter`, `Delete`) and Mobile FAB.
+  - 30-step in-memory Undo/Redo stack and full JSON backup/restore.
+- **Sprint 2: MindGenius Parser & Multi-View Suite**
+  - 2-Way MindGenius (`.mgmx`) ZIP/XML parser with explicit UTF-8 encoding.
+  - Implement Gantt Chart (CPM + Baseline), RACI Grid, Resource Heatmap, Risk 5x5 Matrix, and Kanban.
+- **Sprint 3: Gemini Pro AI Copilot, WebMCP Tools & Office Exporters**
+  - Next.js Server Action `/api/ai/mindmap` with Rate Limiting (5 req/min) and Dexie prompt caching.
+  - In-browser WebMCP tool registration (`lib/webmcp.ts`) for canvas command and control.
+  - Complete Office export suite: `.pptx`, `.docx`, `.xlsx`, `.xml` (MSPDI), `.pdf`, `.png`.
+- **Sprint 4: Firebase Multi-Device Sync & Cross-Platform Hardening**
+  - Firebase Authentication + Cloud Firestore background sync engine.
+  - Mobile touch containment: `touch-action: none;`, `visualViewport` keyboard pan, iOS Safe Area insets.
+  - iOS Web Share API fallback for file downloads.
+  
