@@ -94,10 +94,8 @@ export function CoreMindmapCanvas({ initialData, onDataChange, onNodeSelect }: C
     });
     
     setTimeout(() => {
-      if (me.toCenter) {
-        me.toCenter();
-      }
-    }, 100);
+      me.toCenter?.();
+    }, 150);
 
     meRef.current = me;
 
