@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import MindElixir, { type NodeObj } from 'mind-elixir';
+import 'mind-elixir/dist/MindElixir.css';
 type MindElixirInstance = MindElixir;
 import { Plus, Delete, Undo2, Redo2, Download, Upload, Edit2, Share2 } from 'lucide-react';
 import { MindNode } from '@/lib/db'; // Make sure to use the correct MindNode from our db.ts
@@ -92,6 +93,12 @@ export function CoreMindmapCanvas({ initialData, onDataChange, onNodeSelect }: C
       direction: MindElixir.SIDE,
     });
     
+    setTimeout(() => {
+      if (me.toCenter) {
+        me.toCenter();
+      }
+    }, 100);
+
     meRef.current = me;
 
     me.bus.addListener('selectNodes', (nodes: NodeObj[]) => {

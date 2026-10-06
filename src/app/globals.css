@@ -116,6 +116,24 @@ me-root {
   background-image:
     radial-gradient(circle, #e2e8f0 1px, transparent 1px) !important;
   background-size: 28px 28px !important;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Enforce compact node sizing */
+me-tpc,
+.map-container .node,
+.mind-elixir .topic,
+[data-nodetype] {
+  width: max-content !important;
+  max-width: 320px;
+  display: inline-flex !important;
+  align-items: center;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Root node styling */
