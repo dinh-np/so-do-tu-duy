@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       : `Đọc và tóm tắt tài liệu sau thành sơ đồ tư duy phân cấp:\n\n${prompt}`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3.8-flash',
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       config: {
         systemInstruction: SYSTEM_PROMPT,

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import MindElixir, { MindElixirInstance, NodeObj } from 'mind-elixir';
+import MindElixir, { type NodeObj } from 'mind-elixir';
+type MindElixirInstance = MindElixir;
 import { Plus, Delete, Undo2, Redo2, Download, Upload, Edit2, Share2 } from 'lucide-react';
 import { MindNode } from '@/lib/db'; // Make sure to use the correct MindNode from our db.ts
 import { BRANCH_COLORS } from '@/lib/mindmap-utils';
@@ -128,12 +129,12 @@ export function CoreMindmapCanvas({ initialData, onDataChange, onNodeSelect }: C
 
   const handleAddSibling = useCallback(() => {
     if (!meRef.current || !selectedNodeId) return;
-    meRef.current.insertSibling();
+    (meRef.current as any).insertSibling();
   }, [selectedNodeId]);
 
   const handleDelete = useCallback(() => {
     if (!meRef.current || !selectedNodeId) return;
-    meRef.current.removeNode();
+    (meRef.current as any).removeNode();
   }, [selectedNodeId]);
   
   const handleEdit = useCallback(() => {

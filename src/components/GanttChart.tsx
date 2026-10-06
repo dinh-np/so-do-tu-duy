@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import Gantt from 'frappe-gantt';
 import { MindNode } from '@/lib/db';
 import '@/app/frappe-gantt.css'; 
@@ -74,7 +74,7 @@ export function GanttChart({ data, onUpdate }: GanttChartProps) {
             }
           });
         },
-        on_view_change: (mode: string) => {
+        on_view_change: (mode: any) => {
           // console.log(mode);
         },
         view_mode: 'Day',
